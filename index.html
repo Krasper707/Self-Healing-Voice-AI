@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blinkit Voice AI</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        #mic-btn {
+            background-color: #F8CB46; /* Blinkit Yellow */
+            color: #000;
+            border: none;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            font-size: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(248, 203, 70, 0.4);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #mic-btn:active {
+            transform: scale(0.95);
+        }
+        #mic-btn.listening {
+            background-color: #ff4757;
+            animation: pulse 1.5s infinite;
+        }
+        #mic-btn:disabled {
+    background-color: #555 !important;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+            70% { box-shadow: 0 0 0 30px rgba(255, 71, 87, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
+        .chat-box {
+            margin-top: 40px;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 100px;
+            text-align: left;
+        }
+        .user-text { color: #8ab4f8; margin-bottom: 10px; }
+        .bot-text { color: #a8eaa8; font-size: 1.1em; }
+        .status { margin-top: 20px; color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="color: #F8CB46;">Blinkit Voice Agent</h1>
+    <p>Click the mic and ask about groceries (or donut coupons!)</p>
+    
+    <button id="mic-btn">🎙️</button>
+    <div class="status" id="status">Ready.</div>
+
+    <div class="chat-box">
+        <div class="user-text" id="user-display">You: ...</div>
+        <div class="bot-text" id="bot-display">Bot: ...</div>
+    </div>
+</div>
+
+<script>
+    const micBtn = document.getElementById('mic-btn');
+    const statusTxt = document.getElementById('status');
+    const userDisplay = document.getElementById('user-display');
+    const botDisplay = document.getElementById('bot-display');
+
+    // Use Browser's native Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+
+    micBtn.addEventListener('click', () => {
+        recognition.start();
+        micBtn.disabled = true;
+
+        micBtn.classList.add('listening');
+        statusTxt.innerText = "Listening...";
+    });
+
+    recognition.onresult = async (event) => {
+        micBtn.classList.remove('listening');
+        const transcript = event.results[0][0].transcript;
+        userDisplay.innerText = `You: "${transcript}"`;
+        statusTxt.innerText = "Thinking...";
+
+        try {
+            // Hit your FastAPI backend
+            const response = await fetch('/voice-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: transcript })
+            });
+            const data = await response.json();
+            
+            botDisplay.innerText = `Bot: "${data.response}"`;
+            statusTxt.innerText = "Speaking...";
+
+            // Use Browser's native Text-to-Speech
+            const audio = new Audio(data.audio_url);
+            audio.onended = () => { statusTxt.innerText = "Ready."; micBtn.disabled = false; micBtn.style.opacity = "1";};
+            audio.play();
+
+        } catch (error) {
+            botDisplay.innerText = "Bot: Error reaching the server.";
+            statusTxt.innerText = "Error.";
+        }
+    };
+
+    recognition.onerror = () => {
+        micBtn.classList.remove('listening');
+        statusTxt.innerText = "Didn't catch that. Try again.";
+    };
+</script>
+
+</body>
+</html>

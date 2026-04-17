@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+groq
+scikit-learn
+numpy
+scipy
+SpeechRecognition
+pyaudio
+pygame
+requests
+python-dotenv
+sentence-transformers
+chromadb
+edge-tts
